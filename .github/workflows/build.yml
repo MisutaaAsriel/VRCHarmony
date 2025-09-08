@@ -1,0 +1,120 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: Build Package
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      release:
+        required: true
+        type: boolean
+        default: false
+        
+jobs:
+  build:
+    runs-on: macos-15
+    
+    strategy:
+      fail-fast: true
+      matrix:
+        arch: [ arm64 ]
+    
+    outputs:
+      commitHash: ${{ steps.hash.outputs.commitHash }}
+      version: ${{ steps.version.outputs.version }}
+    
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[publish-gh]') || contains(github.event.head_commit.message, '[build-gh]')
+
+    defaults:
+      run:
+        shell: zsh {0}
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+
+    - name: Get Package Version
+      id: version
+      working-directory: ${{ github.workspace }}/Sources/Harmony
+      run: |
+        version=$(awk -F'[<>]' '/<HarmonyVersion>/ {print $3}' Directory.Build.props)
+        echo "short_version=${version%.*}" >> $GITHUB_ENV
+        echo "version=$version" >> $GITHUB_OUTPUT
+
+    - name: Set Package Version
+      uses: restackio/update-json-file-action@2.1
+      with:
+        file: ${{ github.workspace }}/Packages/com.vrchat.community.harmony/package.json
+        fields: "{\"version\": \"${{ env.short_version }}\"}"
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        global-json-file: Sources/Harmony/global.json
+
+    - name: Restore dependencies
+      working-directory: ${{ github.workspace }}/Sources/Harmony
+      run: dotnet restore
+      
+    - name: Build
+      working-directory: ${{ github.workspace }}/Sources/Harmony/Lib.Harmony
+      run: dotnet build Lib.Harmony.csproj -c:DebugFat -f:net452 --force --no-restore -v:diag -p:features=peverify-compat
+
+    - name: Identify Build
+      id: hash
+      run: |
+        print "commitHash=${"$(git rev-parse HEAD)"[0,9]}" >> $GITHUB_OUTPUT
+
+    - name: Package Assembly
+      working-directory: ${{ github.workspace }}
+      run: |
+        mkdir ./Artifacts
+        cp ./Sources/Harmony/Lib.Harmony/bin/DebugFat/net452/0Harmony.dll ./Artifacts/
+        cp ./Sources/Harmony/Lib.Harmony/bin/DebugFat/net452/0Harmony.dll ./Packages/com.vrchat.community.harmony/Plugins/Harmony/
+        cd ./Packages/com.vrchat.community.harmony
+        zip -r "${{ github.workspace }}/Artifacts/com.vrchat.community.harmony-${{ steps.version.outputs.version }}.zip" .
+
+    - name: Upload Community Package
+      uses: actions/upload-artifact@v4.6.2
+      with:
+        name: Harmony-VCC-Community-Release-${{ steps.version.outputs.version }}-${{ steps.hash.outputs.commitHash }}
+        path: ${{ github.workspace }}/Artifacts/com.vrchat.community.harmony-${{ steps.version.outputs.version }}.zip
+        if-no-files-found: error
+        retention-days: 60
+
+    - name: Upload Harmony Library
+      uses: actions/upload-artifact@v4.6.2
+      with:
+        name: 0Harmony-DebugFat-AnyCPU-net452-${{ steps.version.outputs.version }}-${{ steps.hash.outputs.commitHash }}
+        path: ${{ github.workspace }}/Artifacts/0Harmony.dll
+        if-no-files-found: error
+        retention-days: 60
+
+  Release:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: (github.event_name == 'workflow_dispatch' && inputs.release) || (github.event_name == 'push' && contains(github.ref, 'refs/tags/') && !contains(github.event.head_commit.message, '[skip-gh]')) || contains(github.event.head_commit.message, '[publish-gh]')
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v5
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: false
+          tag_name: ${{ needs.build.outputs.version }}
+          name: "Harmony ${{ needs.build.outputs.version }}"
+          files: |
+            ${{ github.workspace }}/**/*.zip
+            ${{ github.workspace }}/**/*.dll

@@ -1,0 +1,13 @@
+{
+  "name": "com.vrchat.community.harmony",
+  "displayName": "VRChat SDK - Harmony (Community Build)",
+  "version": "0.0.0",
+  "unity": "2022.3",
+  "description": "A package for updating Harmony, a library for patching, replacing and decorating .NET and Mono methods during runtime, as part of the VRChat SDK.",
+  "author": {
+    "name": "VRChat Community Developer"
+  },
+  "vpmDependencies": {
+    "com.vrchat.base": ">=3.8.0"
+  }
+}

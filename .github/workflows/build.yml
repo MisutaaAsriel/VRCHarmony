@@ -4,54 +4,55 @@
 name: Build Package
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
     inputs:
       release:
         required: true
         type: boolean
         default: false
-        
+      reason:
+        required: true
+        type: string
+        default: "Manual Build"
+
+run-name: ${{ inputs.reason }}
+
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: ubuntu-latest
     
     strategy:
       fail-fast: true
-      matrix:
-        arch: [ arm64 ]
     
     outputs:
       commitHash: ${{ steps.hash.outputs.commitHash }}
       version: ${{ steps.version.outputs.version }}
     
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[publish-gh]') || contains(github.event.head_commit.message, '[build-gh]')
-
-    defaults:
-      run:
-        shell: zsh {0}
     
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: 'true'
+        fetch-depth: 0
+
+    - name: Identify Build
+      id: hash
+      run: echo "commitHash=$(git rev-parse HEAD | cut -c1-9)" >> $GITHUB_OUTPUT
 
     - name: Get Package Version
       id: version
-      working-directory: ${{ github.workspace }}/Sources/Harmony
+      working-directory: ${{ github.workspace }}
       run: |
-        version=$(awk -F'[<>]' '/<HarmonyVersion>/ {print $3}' Directory.Build.props)
-        echo "short_version=${version%.*}" >> $GITHUB_ENV
+        version=$(awk -F'[<>]' '/<HarmonyVersion>/ {print $3}' ./Sources/Harmony/Directory.Build.props)
+        echo "package_version=${version%.*}+${version##*.}.$(git log --oneline | awk 'END {print NR}').${{ github.run_number }}" >> $GITHUB_ENV
         echo "version=$version" >> $GITHUB_OUTPUT
 
     - name: Set Package Version
       uses: restackio/update-json-file-action@2.1
       with:
         file: ${{ github.workspace }}/Packages/com.vrchat.community.harmony/package.json
-        fields: "{\"version\": \"${{ env.short_version }}\"}"
+        fields: "{\"version\": \"${{ env.package_version }}\"}"
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
@@ -63,20 +64,17 @@ jobs:
       run: dotnet restore
       
     - name: Build
-      working-directory: ${{ github.workspace }}/Sources/Harmony/Lib.Harmony
-      run: dotnet build Lib.Harmony.csproj -c:DebugFat -f:net452 --force --no-restore -v:diag -p:features=peverify-compat
-
-    - name: Identify Build
-      id: hash
+      working-directory: ${{ github.workspace }}/Sources/Harmony
       run: |
-        print "commitHash=${"$(git rev-parse HEAD)"[0,9]}" >> $GITHUB_OUTPUT
+        dotnet sln remove Lib.Harmony.Ref/Lib.Harmony.Ref.csproj
+        dotnet build -c:release -f:net452
 
     - name: Package Assembly
       working-directory: ${{ github.workspace }}
       run: |
         mkdir ./Artifacts
-        cp ./Sources/Harmony/Lib.Harmony/bin/DebugFat/net452/0Harmony.dll ./Artifacts/
-        cp ./Sources/Harmony/Lib.Harmony/bin/DebugFat/net452/0Harmony.dll ./Packages/com.vrchat.community.harmony/Plugins/Harmony/
+        cp ./Sources/Harmony/Lib.Harmony/bin/Release/net452/0Harmony.dll ./Artifacts/
+        cp ./Sources/Harmony/Lib.Harmony/bin/Release/net452/0Harmony.dll ./Packages/com.vrchat.community.harmony/Plugins/Harmony/
         cd ./Packages/com.vrchat.community.harmony
         zip -r "${{ github.workspace }}/Artifacts/com.vrchat.community.harmony-${{ steps.version.outputs.version }}.zip" .
 
@@ -113,8 +111,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           draft: false
-          tag_name: ${{ needs.build.outputs.version }}
-          name: "Harmony ${{ needs.build.outputs.version }}"
+          tag_name: ${{ needs.build.outputs.version }}+${{ needs.build.outputs.commitHash }}
+          name: "Harmony ${{ needs.build.outputs.version }} (${{ needs.build.outputs.commitHash }})"
           files: |
             ${{ github.workspace }}/**/*.zip
             ${{ github.workspace }}/**/*.dll

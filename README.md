@@ -4,7 +4,7 @@ This is an experimental package for updating [`Harmony`](https://github.com/pard
 ## Installation
 ### Using the VCC (Preferred)
   - [Add my repo](https://misutaaasriel.github.io/Dreemurrs-Repository/) to the VCC, or your [VPM interface of choice](https://vrc-get.anatawa12.com/alcom/).
-  - Add "VRChat SDK - Harmony (Community Build)" to your project
+  - Add "Harmony Library - VRChat SDK Community Build" to your project
 ### Using the package (Advanced)
   - Extract the ZIP from the [latest release](../../releases/latest)
   - Add the package folder to the VCC as a [User Package](https://vcc.docs.vrchat.com/vpm/packages/#user-packages)

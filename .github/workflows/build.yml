@@ -51,7 +51,7 @@ jobs:
     - name: Set Package Version
       uses: restackio/update-json-file-action@2.1
       with:
-        file: ${{ github.workspace }}/Packages/com.vrchat.community.harmony/package.json
+        file: ${{ github.workspace }}/Packages/dev.pardeike.harmony/package.json
         fields: "{\"version\": \"${{ env.package_version }}\"}"
     
     - name: Setup .NET
@@ -74,15 +74,15 @@ jobs:
       run: |
         mkdir ./Artifacts
         cp ./Sources/Harmony/Lib.Harmony/bin/Release/net452/0Harmony.dll ./Artifacts/
-        cp ./Sources/Harmony/Lib.Harmony/bin/Release/net452/0Harmony.dll ./Packages/com.vrchat.community.harmony/Plugins/Harmony/
-        cd ./Packages/com.vrchat.community.harmony
-        zip -r "${{ github.workspace }}/Artifacts/com.vrchat.community.harmony-${{ steps.version.outputs.version }}.zip" .
+        cp ./Sources/Harmony/Lib.Harmony/bin/Release/net452/0Harmony.dll ./Packages/dev.pardeike.harmony/Plugins/Harmony/
+        cd ./Packages/dev.pardeike.harmony
+        zip -r "${{ github.workspace }}/Artifacts/dev.pardeike.harmony-${{ steps.version.outputs.version }}.zip" .
 
     - name: Upload Community Package
       uses: actions/upload-artifact@v4.6.2
       with:
         name: Harmony-VCC-Community-Release-${{ steps.version.outputs.version }}-${{ steps.hash.outputs.commitHash }}
-        path: ${{ github.workspace }}/Artifacts/com.vrchat.community.harmony-${{ steps.version.outputs.version }}.zip
+        path: ${{ github.workspace }}/Artifacts/dev.pardeike.harmony-${{ steps.version.outputs.version }}.zip
         if-no-files-found: error
         retention-days: 60
 

@@ -45,14 +45,14 @@ jobs:
       working-directory: ${{ github.workspace }}
       run: |
         version=$(awk -F'[<>]' '/<HarmonyVersion>/ {print $3}' ./Sources/Harmony/Directory.Build.props)
-        echo "package_version=${version%.*}+${version##*.}.$(git log --oneline | awk 'END {print NR}').${{ github.run_number }}" >> $GITHUB_ENV
-        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "version=${version%.*}+${version##*.}.$(git log --oneline | awk 'END {print NR}').${{ github.run_number }}" >> $GITHUB_OUTPUT
+        echo "short_version=$version" >> $GITHUB_ENV
 
     - name: Set Package Version
       uses: restackio/update-json-file-action@2.1
       with:
         file: ${{ github.workspace }}/Packages/dev.pardeike.harmony/package.json
-        fields: "{\"version\": \"${{ env.package_version }}\"}"
+        fields: "{\"version\": \"${{ steps.version.outputs.version }}\"}"
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
@@ -76,20 +76,20 @@ jobs:
         cp ./Sources/Harmony/Lib.Harmony/bin/Release/net452/0Harmony.dll ./Artifacts/
         cp ./Sources/Harmony/Lib.Harmony/bin/Release/net452/0Harmony.dll ./Packages/dev.pardeike.harmony/Plugins/Harmony/
         cd ./Packages/dev.pardeike.harmony
-        zip -r "${{ github.workspace }}/Artifacts/dev.pardeike.harmony-${{ steps.version.outputs.version }}.zip" .
+        zip -r "${{ github.workspace }}/Artifacts/dev.pardeike.harmony-${{ env.short_version }}.zip" .
 
     - name: Upload Community Package
       uses: actions/upload-artifact@v4.6.2
       with:
-        name: Harmony-VCC-Community-Release-${{ steps.version.outputs.version }}-${{ steps.hash.outputs.commitHash }}
-        path: ${{ github.workspace }}/Artifacts/dev.pardeike.harmony-${{ steps.version.outputs.version }}.zip
+        name: Harmony-VCC-Community-Release-${{ env.short_version }}-${{ steps.hash.outputs.commitHash }}
+        path: ${{ github.workspace }}/Artifacts/dev.pardeike.harmony-${{ env.short_version }}.zip
         if-no-files-found: error
         retention-days: 60
 
     - name: Upload Harmony Library
       uses: actions/upload-artifact@v4.6.2
       with:
-        name: 0Harmony-DebugFat-AnyCPU-net452-${{ steps.version.outputs.version }}-${{ steps.hash.outputs.commitHash }}
+        name: 0Harmony-DebugFat-AnyCPU-net452-${{ env.short_version }}-${{ steps.hash.outputs.commitHash }}
         path: ${{ github.workspace }}/Artifacts/0Harmony.dll
         if-no-files-found: error
         retention-days: 60
@@ -111,7 +111,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           draft: false
-          tag_name: ${{ needs.build.outputs.version }}+${{ needs.build.outputs.commitHash }}
+          tag_name: ${{ needs.build.outputs.version }}
           name: "Harmony ${{ needs.build.outputs.version }} (${{ needs.build.outputs.commitHash }})"
           files: |
             ${{ github.workspace }}/**/*.zip

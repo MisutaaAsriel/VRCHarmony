@@ -6,8 +6,23 @@
   "description": "A package for updating Harmony, a library for patching, replacing and decorating .NET and Mono methods during runtime, as part of the VRChat SDK.",
   "author": {
     "name": "pardeike",
-    "url": "https://github.com/pardeike/Harmony"
+    "url": "https://github.com/pardeike"
   },
+  "homepage": "https://github.com/pardeike/Harmony",
+  "contributors": [
+    {
+      "name": "MisutaaAsriel",
+      "url": "https://github.com/MisutaaAsriel"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/pardeike/Harmony/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MisutaaAsriel/VRCHarmony"
+  },
+  "license": "MIT",
   "vpmDependencies": {
     "com.vrchat.base": ">=3.8.0"
   },

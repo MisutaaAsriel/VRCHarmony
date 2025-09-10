@@ -18,7 +18,7 @@ As of [2.4.0.0](https://github.com/pardeike/Harmony/releases/tag/v2.4.0.0), Harm
 
 Due to an issue with how the release packages are compiled, Harmony's public releases are **incompatible** with the **Unity Burst Compiler**, which is **required as part of the VRChat SDK**. As such, **a local solution-level build must be provided** instead. Likewise, package editing **will always be undone with updates**, so a method of providing this DLL **outside of the VRC SDK is necessary.**
 
-This project does the following via [GitHub Actions](https://github.com/MisutaaAsriel/VRCHarmony/actions):
+This project does the following via [GitHub Actions](../../actions):
 - Checks out the latest copy of [`pardeike/Harmony`](https://github.com/pardeike/Harmony)
 - Builds the main library *at the solution level* using the following flags: `-c:Release -f:net452`
 - Packages the library in a [VPM Package](https://vcc.docs.vrchat.com/vpm/packages/#community-packages)
